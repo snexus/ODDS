@@ -49,7 +49,7 @@ class MainWindow(QMainWindow,oddsFormMain.Ui_MainWindow):
         try:
             pickle.dump(self.syst, open(fname, 'wb'))
         except:
-            QMessageBox.warning(self, "Error","File was not saved")
+            QMessageBox.warning(self, "Error","File was not saved!")
 
     def fileOpen(self):
         fname = unicode(QFileDialog.getOpenFileName(self,"ODDS - Choose File Name", "","ODDS files (*.ods);;All files (*.* *)"))
