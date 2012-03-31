@@ -113,7 +113,7 @@ class ResultExplorer(QMainWindow):
         relativeTo=self.relative_to.currentIndex()
         if relativeTo:
             relativeResult=self.result_y[relativeTo-1]
-        self.axes.plot(self.result_x[current],np.array(self.result_y[current])-np.array(relativeResult))
+        self.axes.plot(self.result_x[current],np.array(self.result_y[current])-np.array(relativeResult),picker=1)
         self.axes.set_xlabel(self.label_x[current],fontsize=9)
         self.axes.set_ylabel(self.label_y[current],fontsize=9)
         self.axes.grid(True)
@@ -197,6 +197,9 @@ class ResultExplorer(QMainWindow):
         self.label1=QLabel("Choose Result:")
         self.label2=QLabel("Relative to:")
         self.relative_to=QComboBox()
+        self.label3=QLabel("Query point, X=")
+        self.xtextbox=QLineEdit()
+        self.intersect_button=QPushButton("&Find intersect.")
         #self.textbox.setMinimumWidth(200)
         #self.connect(self.choose_result, SIGNAL('currentIndexChanged (int)'), self.on_draw)
         
@@ -233,6 +236,10 @@ class ResultExplorer(QMainWindow):
         hbox.addWidget(self.choose_result)
         hbox.addWidget(self.label2)
         hbox.addWidget(self.relative_to)
+        hbox.addStretch()
+        hbox.addWidget(self.label3)
+        hbox.addWidget(self.xtextbox)
+        hbox.addWidget(self.intersect_button)
         hbox.addStretch()
         hbox1=QHBoxLayout()
         hbox1.addWidget(self.add_button)
