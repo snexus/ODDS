@@ -18,8 +18,9 @@ Last modified: 19.01.2009
 import sys, os, random
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+from scipy import interpolate
 
-import matplotlib
+#import matplotlib
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
@@ -35,6 +36,7 @@ class ResultExplorer(QMainWindow):
         self.create_main_frame()
         self.create_status_bar()
         self.result_x,self.result_y=[],[]
+        self.tracking_mode=False
         self.label_x,self.label_y,self.result_name=[],[],[]
         self.relative_to.addItem("Absolute")
 
@@ -52,6 +54,7 @@ class ResultExplorer(QMainWindow):
         self.label_x.append(label_x)
         self.label_y.append(label_y)
         self.update_available_results()
+        
     
     def add_custom_text(self,text):
         self.textedit.append(text)
@@ -108,12 +111,16 @@ class ResultExplorer(QMainWindow):
     
     
     def add_clicked(self):
+        self.tracking_mode=False
+        self.add_custom_text("Tracking mode: "+str(self.tracking_mode))
         relativeResult=0
         current=self.choose_result.currentIndex()
         relativeTo=self.relative_to.currentIndex()
         if relativeTo:
             relativeResult=self.result_y[relativeTo-1]
+        self.interpolated_result=interpolate.splrep(self.result_x[current],np.array(self.result_y[current])-np.array(relativeResult),s=0)
         self.axes.plot(self.result_x[current],np.array(self.result_y[current])-np.array(relativeResult),picker=1)
+        self.txt = self.axes.text( 0.7, 0.9, '', transform=self.axes.transAxes)
         self.axes.set_xlabel(self.label_x[current],fontsize=9)
         self.axes.set_ylabel(self.label_y[current],fontsize=9)
         self.axes.grid(True)
@@ -124,6 +131,21 @@ class ResultExplorer(QMainWindow):
     def replace_clicked(self):
         self.clear_clicked()
         self.add_clicked()
+    
+    def intersect_clicked(self):
+        #print "intersect clicked"
+        try:
+            x=self.intersect_textbox.text().toFloat()[0]
+            y=interpolate.splev(x,self.interpolated_result)
+            self.add_custom_text("Query result: x = "+str(x)+', y = '+str(y))
+        except:
+            QMessageBox.information(self,"Error!", "Probably add the plot first")
+        
+        self.axes.plot([x],[y], marker='o', color='r', ls='')
+        self.canvas.draw()
+        
+       
+        
         
     def format_labels(self):
         labels_x = self.axes.get_xticklabels()
@@ -137,6 +159,13 @@ class ResultExplorer(QMainWindow):
     def clear_clicked(self):
         self.axes.clear()
         self.canvas.draw()
+    
+    def tracking_clicked(self):
+        self.tracking_mode=not self.tracking_mode
+        self.add_custom_text("Tracking mode: "+str(self.tracking_mode))
+        if hasattr(self, 'tracking_dot'):
+            del self.tracking_dot
+        #self.canvas.draw()
     
     def on_draw(self):
         """ Redraws the figure
@@ -160,6 +189,18 @@ class ResultExplorer(QMainWindow):
 #            picker=5)
 
     
+    def mouse_move(self,event):
+       
+        if not (event.inaxes and self.tracking_mode) : return
+        x, y = event.xdata, event.ydata
+        y=interpolate.splev(x,self.interpolated_result) 
+        self.txt.set_text( 'x=%1.5f, y=%1.5f'%(x,y) )
+        if hasattr(self, 'tracking_dot'):
+            l=self.tracking_dot.pop()
+            l.remove()
+        self.tracking_dot=self.axes.plot([x],[y], marker='o', color='r', ls='')
+        self.canvas.draw()
+        
     def create_main_frame(self):
         self.main_frame = QWidget()
         
@@ -176,12 +217,14 @@ class ResultExplorer(QMainWindow):
         self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
         
         
+        
         # Since we have only one plot, we can use add_axes 
         # instead of add_subplot, but then the subplot
         # configuration tool in the navigation toolbar wouldn't
         # work.
         #
         self.axes = self.fig.add_subplot(111)
+        
         self.fig.subplots_adjust(left=0.1, bottom=0.1, right=0.95, top=0.95)
 
         
@@ -194,12 +237,13 @@ class ResultExplorer(QMainWindow):
         # Other GUI controls
         # 
         self.choose_result = QComboBox()
-        self.label1=QLabel("Choose Result:")
+        self.label1=QLabel("Active Result:")
         self.label2=QLabel("Relative to:")
         self.relative_to=QComboBox()
-        self.label3=QLabel("Query point, X=")
-        self.xtextbox=QLineEdit()
+        self.label3=QLabel("Query point: ")
+        self.intersect_textbox=QLineEdit()
         self.intersect_button=QPushButton("&Find intersect.")
+        self.tracking_button=QPushButton("Tracking mode")
         #self.textbox.setMinimumWidth(200)
         #self.connect(self.choose_result, SIGNAL('currentIndexChanged (int)'), self.on_draw)
         
@@ -207,9 +251,13 @@ class ResultExplorer(QMainWindow):
         self.clear_button = QPushButton("&Clear Plots")
         self.textedit=QTextEdit()
         self.replace_button=QPushButton("&Replace Plot")
+   
         self.connect(self.add_button, SIGNAL('clicked()'), self.add_clicked)
         self.connect(self.clear_button, SIGNAL('clicked()'), self.clear_clicked)
         self.connect(self.replace_button, SIGNAL('clicked()'), self.replace_clicked)
+        self.connect(self.intersect_button, SIGNAL('clicked()'), self.intersect_clicked)
+        self.connect(self.tracking_button, SIGNAL('clicked()'), self.tracking_clicked)
+        self.canvas.mpl_connect('motion_notify_event', self.mouse_move)
         
         
         #self.grid_cb = QCheckBox("Show &Grid")
@@ -238,8 +286,9 @@ class ResultExplorer(QMainWindow):
         hbox.addWidget(self.relative_to)
         hbox.addStretch()
         hbox.addWidget(self.label3)
-        hbox.addWidget(self.xtextbox)
+        hbox.addWidget(self.intersect_textbox)
         hbox.addWidget(self.intersect_button)
+        hbox.addWidget(self.tracking_button)
         hbox.addStretch()
         hbox1=QHBoxLayout()
         hbox1.addWidget(self.add_button)
@@ -315,8 +364,8 @@ def main():
     t=np.linspace(0,np.pi*2,100)
     app = QApplication(sys.argv)
     form = ResultExplorer()
- #   form.add_result("Sinus", t, np.sin(t), "Time [sec]", "Disp")
-  #  form.add_result("Cosine", t, np.cos(t), "Time [sec]", "Disp")
+    form.add_result("Sinus", t, np.sin(t), "Time [sec]", "Disp")
+    form.add_result("Cosine", t, np.cos(t), "Time [sec]", "Disp")
     
     form.show()
     app.exec_()
