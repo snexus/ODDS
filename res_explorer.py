@@ -19,6 +19,7 @@ import sys, os, random
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from scipy import interpolate
+import csv
 
 #import matplotlib
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
@@ -85,6 +86,27 @@ class ResultExplorer(QMainWindow):
             self.canvas.print_figure(path, dpi=self.dpi)
             self.statusBar().showMessage('Saved to %s' % path, 2000)
     
+    def save_csv_plot(self):
+        file_choices = "csv(*.csv)|*.csv"
+        path = unicode(QFileDialog.getSaveFileName(self, 'Save file', '', file_choices))
+        if path:
+            print path
+            caption_row=[]
+            csvWriter = csv.writer(open(path, 'wb'), delimiter=' ',  quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            csvWriter.writerow(self.result_name)
+            for i in range(0,len(self.result_name)):
+                caption_row=caption_row+[self.label_x[i]]+[self.label_y[i]]
+            csvWriter.writerow(caption_row)
+            #print len(self.result_x[0]),len(self.result_name)
+            for j in range (0,len(self.result_x[0])):
+                row=[]
+                for i in range(0,len(self.result_name)):
+                    row=row+[self.result_x[i][j]]+[self.result_y[i][j]]
+                csvWriter.writerow(row)
+                
+
+        
+    
     def on_about(self):
         msg = """ A demo of using PyQt with matplotlib:
         
@@ -97,22 +119,11 @@ class ResultExplorer(QMainWindow):
         """
         QMessageBox.about(self, "About the demo", msg.strip())
     
-    def on_pick(self, event):
-        # The event received here is of the type
-        # matplotlib.backend_bases.PickEvent
-        #
-        # It carries lots of information, of which we're using
-        # only a small amount here.
-        # 
-        box_points = event.artist.get_bbox().get_points()
-        msg = "You've clicked on a bar with coords:\n %s" % box_points
-        
-        QMessageBox.information(self, "Click!", msg)
+
     
     
     def add_clicked(self):
-        self.tracking_mode=False
-        self.add_custom_text("Tracking mode: "+str(self.tracking_mode))
+        self.tracking_clicked(default='False')
         relativeResult=0
         current=self.choose_result.currentIndex()
         relativeTo=self.relative_to.currentIndex()
@@ -138,11 +149,12 @@ class ResultExplorer(QMainWindow):
             x=self.intersect_textbox.text().toFloat()[0]
             y=interpolate.splev(x,self.interpolated_result)
             self.add_custom_text("Query result: x = "+str(x)+', y = '+str(y))
+            self.axes.plot([x],[y], marker='+', color='r', ls='')
+            self.canvas.draw()
         except:
             QMessageBox.information(self,"Error!", "Probably add the plot first")
         
-        self.axes.plot([x],[y], marker='o', color='r', ls='')
-        self.canvas.draw()
+        
         
        
         
@@ -158,14 +170,23 @@ class ResultExplorer(QMainWindow):
     
     def clear_clicked(self):
         self.axes.clear()
+        del self.tracking_dot
         self.canvas.draw()
     
-    def tracking_clicked(self):
-        self.tracking_mode=not self.tracking_mode
+    def tracking_clicked(self,default='Switch'):
+        
+        if default=='Switch':
+            self.tracking_mode=not self.tracking_mode
+        else: 
+            self.tracking_mode=False
         self.add_custom_text("Tracking mode: "+str(self.tracking_mode))
         if hasattr(self, 'tracking_dot'):
+            l=self.tracking_dot.pop()
+            l.remove()
             del self.tracking_dot
-        #self.canvas.draw()
+         
+               # print "Some error has occured"
+        self.canvas.draw()
     
     def on_draw(self):
         """ Redraws the figure
@@ -191,13 +212,16 @@ class ResultExplorer(QMainWindow):
     
     def mouse_move(self,event):
        
-        if not (event.inaxes and self.tracking_mode) : return
+        if not (event.inaxes and self.tracking_mode and hasattr(self, 'interpolated_result')) : return
         x, y = event.xdata, event.ydata
         y=interpolate.splev(x,self.interpolated_result) 
         self.txt.set_text( 'x=%1.5f, y=%1.5f'%(x,y) )
         if hasattr(self, 'tracking_dot'):
-            l=self.tracking_dot.pop()
-            l.remove()
+            try:
+                l=self.tracking_dot.pop()
+                l.remove()
+            except:
+                pass
         self.tracking_dot=self.axes.plot([x],[y], marker='o', color='r', ls='')
         self.canvas.draw()
         
@@ -230,7 +254,7 @@ class ResultExplorer(QMainWindow):
         
         # Bind the 'pick' event for clicking on one of the bars
         #
-        self.canvas.mpl_connect('pick_event', self.on_pick)
+        #self.canvas.mpl_connect('pick_event', self.on_pick)
         
        
         
@@ -240,11 +264,11 @@ class ResultExplorer(QMainWindow):
         self.label1=QLabel("Active Result:")
         self.label2=QLabel("Relative to:")
         self.relative_to=QComboBox()
-        self.label3=QLabel("Query point: ")
+        self.label3=QLabel("Query X: ")
         self.intersect_textbox=QLineEdit()
         self.intersect_button=QPushButton("&Find intersect.")
         self.tracking_button=QPushButton("Tracking mode")
-        #self.textbox.setMinimumWidth(200)
+        self.intersect_textbox.setMaximumWidth(75)
         #self.connect(self.choose_result, SIGNAL('currentIndexChanged (int)'), self.on_draw)
         
         self.add_button = QPushButton("&Add Plot")
@@ -259,37 +283,20 @@ class ResultExplorer(QMainWindow):
         self.connect(self.tracking_button, SIGNAL('clicked()'), self.tracking_clicked)
         self.canvas.mpl_connect('motion_notify_event', self.mouse_move)
         
-        
-        #self.grid_cb = QCheckBox("Show &Grid")
-        #self.grid_cb.setChecked(False)
-        #self.connect(self.grid_cb, SIGNAL('stateChanged(int)'), self.on_draw)
-        
-#        slider_label = QLabel('Bar width (%):')
-#        self.slider = QSlider(Qt.Horizontal)
-#        self.slider.setRange(1, 100)
-#        self.slider.setValue(20)
-#        self.slider.setTracking(True)
-#        self.slider.setTickPosition(QSlider.TicksBothSides)
-#        self.connect(self.slider, SIGNAL('valueChanged(int)'), self.on_draw)
-        
-        #
-        # Layout with box sizers
-        # 
+
         hbox = QHBoxLayout()
 #        
-#        for w in [  self.label1, self.choose_result]:
-#            hbox.addWidget(w)
-#            hbox.setAlignment(w, Qt.AlignVCenter)
+
         hbox.addWidget(self.label1)
         hbox.addWidget(self.choose_result)
         hbox.addWidget(self.label2)
         hbox.addWidget(self.relative_to)
         hbox.addStretch()
+        hbox.addWidget(self.tracking_button)
+        hbox.addStretch()
         hbox.addWidget(self.label3)
         hbox.addWidget(self.intersect_textbox)
         hbox.addWidget(self.intersect_button)
-        hbox.addWidget(self.tracking_button)
-        hbox.addStretch()
         hbox1=QHBoxLayout()
         hbox1.addWidget(self.add_button)
         hbox1.addWidget(self.replace_button)
@@ -322,11 +329,14 @@ class ResultExplorer(QMainWindow):
         load_file_action = self.create_action("&Save plot",
             shortcut="Ctrl+S", slot=self.save_plot, 
             tip="Save the plot")
+        export_csv_action = self.create_action("&Export to .CSV",
+            shortcut="Ctrl+E", slot=self.save_csv_plot, 
+            tip="Save the plot")
         quit_action = self.create_action("&Quit", slot=self.close, 
             shortcut="Ctrl+Q", tip="Close the application")
         
         self.add_actions(self.file_menu, 
-            (load_file_action, None, quit_action))
+            (load_file_action, export_csv_action,None, quit_action))
         
         self.help_menu = self.menuBar().addMenu("&Help")
         about_action = self.create_action("&About", 
