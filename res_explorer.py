@@ -170,7 +170,8 @@ class ResultExplorer(QMainWindow):
     
     def clear_clicked(self):
         self.axes.clear()
-        del self.tracking_dot
+        if hasattr(self, 'tracking_dot'):
+            del self.tracking_dot
         self.canvas.draw()
     
     def tracking_clicked(self,default='Switch'):
