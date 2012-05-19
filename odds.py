@@ -70,12 +70,26 @@ class MainWindow(QMainWindow,oddsFormMain.Ui_MainWindow):
             table.setSelectionBehavior(QTableWidget.SelectRows)
             table.setSelectionMode(QTableWidget.SingleSelection)
     
-    @pyqtSignature("")
-    def on_lineEdit_DispInit_returnPressed(self):
+    
+    #def on_lineEdit_DispInit_returnPressed(self):
+    @pyqtSignature("QString")
+    def on_lineEdit_DispInit_textEdited(self,string1):
+        #print "changed, displ"
         self.SetInit()
+#        print "\n Displacement DOF 0"
+#        print self.syst.initDisp[0][self.syst.DOF[0]]
+#        print "\n Displacement DOF 1"
+#        print self.syst.initDisp[0][self.syst.DOF[1]]
+
         
-    def on_lineEdit_VelInit_returnPressed(self):
+    #def on_lineEdit_VelInit_returnPressed(self):
+    @pyqtSignature("QString")
+    def on_lineEdit_VelInit_textEdited(self,string1):
         self.SetInit()
+#        print "\n Velocity DOF 0"
+#        print self.syst.initVel[0][self.syst.DOF[0]]
+#        print "\n Velocity DOF 1"
+#        print self.syst.initVel[0][self.syst.DOF[1]]
     
     @pyqtSignature("int")
     def on_tabWidget_currentChanged(self,index):
@@ -91,9 +105,18 @@ class MainWindow(QMainWindow,oddsFormMain.Ui_MainWindow):
     
     @pyqtSignature("int")
     def on_comboBox_DOF_currentIndexChanged(self,index):
+#        print "\n changing Displacement DOF 0"
+#        print self.syst.initDisp[0][self.syst.DOF[0]]
+#        print "\n Changing Displacement DOF 1"
+#        print self.syst.initDisp[0][self.syst.DOF[1]]
+#        print "\n Changing Velocity DOF 0"
+#        print self.syst.initVel[0][self.syst.DOF[0]]
+#        print "\n Changing Velocity DOF 1"
+#        print self.syst.initVel[0][self.syst.DOF[1]]
         currentDOF=index
         self.lineEdit_DispInit.setText(str(self.syst.initDisp[0][self.syst.DOF[currentDOF]]))
         self.lineEdit_VelInit.setText(str(self.syst.initVel[0][self.syst.DOF[currentDOF]]))
+        
         
     @pyqtSignature("")
     def SetInit(self):
