@@ -552,7 +552,7 @@ class DynSystem:
             Force,SpringForce,DamperForce=0.0,0.0,0.0
             if self.forces[i]!=-1:
                 Force=self.forces[i].getValue(self.omega,t)
-                print t, Force
+                #print t, Force
             for j in range(0,self.Length):
                 if j!=i:
                     if j in self.DOF:
@@ -801,7 +801,7 @@ class AddEditConnDialog(QDialog,AddEditConnector.Ui_AddConnDialog):
     #QTimer.singleShot(60000, app.quit) # 1 minute
         string=""
         for freq,mass, in zip(self.nat_freq,self.masses):
-            string+="C= "+str(modal_ratio*2*mass*sqrt(freq))+"\n"
+            string+="C= "+str(modal_ratio*2*mass*freq)+"\n"
         QMessageBox.information(self, "Damping ratios:",string)
         
     def accept(self):
