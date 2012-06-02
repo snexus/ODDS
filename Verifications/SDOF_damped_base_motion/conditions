@@ -1,0 +1,14 @@
+# System Description
+Mass = 1
+K = 16 (wn=4)
+c=0.4 (zeta=0.05)
+#Base motion
+U=3.0*sin(wt)
+#initial conditions
+x0=0
+x0_dot=0
+#Driving frequency
+f=0.95492Hz (w=6)
+
+# Theory verification:
+"Simple vibration problems with Matlab"

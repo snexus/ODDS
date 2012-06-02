@@ -1,0 +1,13 @@
+# System Description
+Mass = 1
+K = 16 (wn=4)
+#Force step function
+F=0, t<=2 sec
+F=3, t>2 sec
+#initial conditions
+x0=0
+x0_dot=0
+
+
+# Theory verification:
+Harris - Shock and vibration handbook

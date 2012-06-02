@@ -1,0 +1,13 @@
+# System Description
+Mass = 1
+K = 49 (wn=7)
+#Driving force
+F=6.0*cos(wt)
+#initial conditions
+x0=0
+x0_dot=0
+#Driving frequency
+f=6.68Hz (w=42)
+
+# Theory verification:
+"Simple vibration problems with Matlab"
