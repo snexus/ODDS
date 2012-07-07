@@ -216,7 +216,34 @@ class MainWindow(QMainWindow,oddsFormMain.Ui_MainWindow):
         print "B=",self.syst.omega
 
 
-
+    @pyqtSignature("")
+    def on_modeDecomp_clicked(self):
+        self.syst.prepare_system()
+        print "\nM matrix = ",self.syst.K_matrix
+        print "\nK matrix = ",self.syst.M_matrix
+        print "\nF matrix = ",self.syst.Fcoeff_matrix
+        self.syst.mode_decomp_transform_matrix()
+        init_con=self.syst.form_init_conditions_mode_decomp()
+        print "\nInitial conditions =",init_con
+        self.ResExplorer.clear()
+        Npoints,res=0,0
+        Npeaks=self.lineEdit_Npeaks.text().toFloat()[0]
+        NpeaskSS=self.lineEdit_NpeaksSS.text().toFloat()[0]
+        if self.radioButton_constantNpeak.isChecked():
+            Npoints=self.lineEdit_constNpeak.text().toFloat()[0]
+        else:
+            N=self.lineEdit_varNpeak.text().toFloat()[0]
+            if N!=0:
+                res=1.0/N
+        start_time=self.lineStartTime.text().toFloat()[0]
+        freq=self.lineEdit_SingleFreq.text().toFloat()[0]
+        if self.comboBoxPeaks.currentIndex()==1:
+            Npeaks=Npeaks*freq
+        self.syst.form_displacement_functions(Npeaks/freq,freq,10000,start_time)
+        t,result=self.syst.solve_for_frequency_mode_decomp(freq,init_con,Npeaks,Npoints,res,start_time)
+        print result
+        
+    
     @pyqtSignature("")
     def on_ForceAddButton_clicked(self):
         available_nodes=self.syst.get_available_force_nodes()
@@ -519,6 +546,7 @@ class DynSystem:
         self.initVel=np.zeros((1,self.n_nodes))
         self.springs=np.zeros((self.n_nodes,self.n_nodes))
         self.dampers=np.zeros((self.n_nodes,self.n_nodes))
+        self.zeta=np.zeros
         self.displacements=[]
         self.forces=[]
         self.DOF=[]
@@ -564,11 +592,41 @@ class DynSystem:
             xi_tag=(Force-SpringForce-DamperForce)/self.masses[0][i]
             f.append(xi_tag)
         return f
-
+    
+    def mode_decomp_solver(self,w,t):
+        f,counter=[],0
+        sizeFcoeff=self.Fcoeff_matrix.shape
+        ForceVector=np.zeros((len(self.DOF),1))
+#        print "Force Vectr = ",ForceVector
+#        print "FcoeffMatrix = ",self.Fcoeff_matrix
+        #for i in range(0,sizeFcoeff[0]):
+        for i in self.DOF:
+            ind_i=self.DOF.index(i)
+            print "i, ind_i =",i,ind_i
+            Force=0.0
+            if self.forces[i]!=-1:
+                Force=self.forces[i].getValue(self.omega,t)
+            ForceVector[ind_i]=ForceVector[ind_i]+Force
+            for j in range(0,sizeFcoeff[1]):            
+                xj=0.0
+                if hasattr(self.displacements[j], "getValue"):
+                    xj,vj=self.displacements[j].getValue(self.omega,t)
+                ForceVector[ind_i]=ForceVector[ind_i]+self.Fcoeff_matrix[ind_i][j]*xj
+        TransformedForce=np.dot(self.Transf_matrix.T,ForceVector)
+        for i,k in zip(self.DOF,range(0,len(self.DOF))):
+            xi,vi=w[counter],w[counter+1]
+            counter=counter+2
+            f.append(vi)
+            f.append(TransformedForce[k]-2*self.zeta[k]*self.nat_freq[k]*vi-(self.nat_freq[k]**2)*xi)
+        print "f=",f
+        return f
+       
+    
     def form_KM_matrix(self):
         self.K_matrix=np.zeros((len(self.DOF),len(self.DOF)))
         self.M_matrix=np.zeros((len(self.DOF),len(self.DOF)))
         Length=len(self.displacements)
+        self.Fcoeff_matrix=np.zeros((len(self.DOF),Length))
         #print self.DOF
         for i in self.DOF:
             ind_i=self.DOF.index(i)
@@ -578,7 +636,40 @@ class DynSystem:
                 if j in self.DOF:
                     ind_j=self.DOF.index(j)
                     self.K_matrix[ind_i][ind_j]=self.K_matrix[ind_i][ind_j]-self.springs[i][j]
+                else:
+                    self.Fcoeff_matrix[ind_i][j]=self.springs[i][j]
                 
+    def mode_decomp_transform_matrix(self):
+        Kmat=self.K_matrix     
+        Mmat=self.M_matrix
+#        print "Kmat = ",Kmat
+#        print "Mmat = ",Mmat
+        w,v=eig(Kmat,Mmat,left=True,right=False)
+        self.nat_freq=np.real(np.sqrt(w))
+        self.omega
+        print "v,w= ",v,w
+        v=v.T
+        v1=v[0][np.newaxis]
+#        print "v1= ",v1
+#        print "multiply = ",sqrt(1.0/np.dot(np.dot(v1,Mmat),v1.T))
+        r1=sqrt(1.0/np.dot(np.dot(v1,Mmat),v1.T))
+        self.Transf_matrix=r1*v1
+        for i in range(1,v.shape[1]):
+            v1=v[i][np.newaxis]
+            r1=sqrt(1.0/np.dot(np.dot(v1,Mmat),v1.T))
+            self.Transf_matrix=np.concatenate((self.Transf_matrix,r1*v1),axis=0).T
+        print "\nTransformation matrix = \n",self.Transf_matrix       
+        
+    def form_init_conditions_mode_decomp(self):
+        init_con=[]
+        init_disp=np.array([self.initDisp[0][i] for i in self.DOF])
+        init_vel=np.array([self.initVel[0][i] for i in self.DOF])
+        trans_disp=np.dot(np.dot(self.Transf_matrix.T,self.M_matrix),init_disp)
+        trans_vel=np.dot(np.dot(self.Transf_matrix.T,self.M_matrix),init_vel)
+        for i in range(0,len(trans_disp)):
+            init_con.append(trans_disp[i])
+            init_con.append(trans_vel[i])
+        return init_con
     
     def find_natural_frequencies(self):
         self.prepare_system()
@@ -594,7 +685,7 @@ class DynSystem:
         
     def prepare_system(self):
 # calculate degrees of Freedom of system
-        self.DOF=[]
+        self.DOF=[]      
         self.Length=len(self.displacements)
         #self.init_con=[0]*len(self.DOF)
         for i in range(0,self.Length):
@@ -604,6 +695,7 @@ class DynSystem:
                 #self.initVel.append(0)
         self.form_KM_matrix()
         print "DOF=",self.DOF
+        self.zeta=np.zeros(len(self.DOF))
         #print(self.displacements[0].getValue(15,2))
         
     def solve_for_frequency(self, freq,init_conditions,n_peaks=10.0,npoints_peak=500.0,resolution=0.1,start_time=0.0):
@@ -616,6 +708,18 @@ class DynSystem:
             num_points=npoints_peak*n_peaks
         t=np.linspace(start_time,stop_time,num_points)
         result=odeint(self.ode_system,init_conditions,t).T
+        return t,result
+    
+    def solve_for_frequency_mode_decomp(self, freq,init_conditions,n_peaks=10.0,npoints_peak=500.0,resolution=0.1,start_time=0.0):
+        
+        self.omega=freq*2*pi
+        stop_time=n_peaks/freq
+        if npoints_peak==0:
+            num_points=freq/resolution*n_peaks
+        else:
+            num_points=npoints_peak*n_peaks
+        t=np.linspace(start_time,stop_time,num_points)
+        result=odeint(self.mode_decomp_solver,init_conditions,t).T
         return t,result
     
     

@@ -2,8 +2,8 @@
 
 # Form implementation generated from reading ui file 'oddsFormMain.ui'
 #
-# Created: Sat May 19 21:05:40 2012
-#      by: PyQt4 UI code generator 4.9.1
+# Created: Sat Jul  7 11:17:54 2012
+#      by: PyQt4 UI code generator 4.9.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -50,6 +50,9 @@ class Ui_MainWindow(object):
         self.horizontalLayout_7.addWidget(self.nodes_spinBox)
         spacerItem = QtGui.QSpacerItem(488, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.horizontalLayout_7.addItem(spacerItem)
+        self.modeDecomp = QtGui.QPushButton(self.tab)
+        self.modeDecomp.setObjectName(_fromUtf8("modeDecomp"))
+        self.horizontalLayout_7.addWidget(self.modeDecomp)
         self.testODE = QtGui.QPushButton(self.tab)
         self.testODE.setObjectName(_fromUtf8("testODE"))
         self.horizontalLayout_7.addWidget(self.testODE)
@@ -594,6 +597,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QtGui.QApplication.translate("MainWindow", "ODDS - One Dimensional Dynamic Systems", None, QtGui.QApplication.UnicodeUTF8))
         self.label.setText(QtGui.QApplication.translate("MainWindow", "Number of nodes:", None, QtGui.QApplication.UnicodeUTF8))
+        self.modeDecomp.setText(QtGui.QApplication.translate("MainWindow", "Mode Decomp", None, QtGui.QApplication.UnicodeUTF8))
         self.testODE.setText(QtGui.QApplication.translate("MainWindow", "SolveODE", None, QtGui.QApplication.UnicodeUTF8))
         self.printSyst.setText(QtGui.QApplication.translate("MainWindow", "Print Syst.", None, QtGui.QApplication.UnicodeUTF8))
         self.label_3.setText(QtGui.QApplication.translate("MainWindow", "Masses:", None, QtGui.QApplication.UnicodeUTF8))

@@ -34,10 +34,10 @@ plt.grid(True)
 tau=0.01
 input_f=2
 t1=np.linspace(0,tau,1000)
-resp1=input_f*(1-np.cos(wn*t1))
+resp1=input_f/k*(1-np.cos(wn*t1))
 t2=np.linspace(tau,tau*5,1000)
 T_1=1/(wn/2/pi)
-resp2=input_f*(2*sin(pi*tau/T_1))*np.sin(wn*(t2-tau/2))
+resp2=input_f/k*(2*sin(pi*tau/T_1))*np.sin(wn*(t2-tau/2))
 plt.figure()
 plt.plot(t1,resp1)
 plt.plot(t2,resp2)
