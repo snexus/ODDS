@@ -240,8 +240,16 @@ class MainWindow(QMainWindow,oddsFormMain.Ui_MainWindow):
         if self.comboBoxPeaks.currentIndex()==1:
             Npeaks=Npeaks*freq
         self.syst.form_displacement_functions(Npeaks/freq,freq,10000,start_time)
-        t,result=self.syst.solve_for_frequency_mode_decomp(freq,init_con,Npeaks,Npoints,res,start_time)
-        print result
+        t,result,U1,V1=self.syst.solve_for_frequency_mode_decomp(freq,init_con,Npeaks,Npoints,res,start_time)
+        for i in range(0,len(self.syst.DOF)):
+                self.ResExplorer.add_result("Displacement - node #"+str(self.syst.DOF[i]), t, U1[i], "Time [sec]", "Displacement")
+                self.ResExplorer.add_result("Velocity - node # "+str(self.syst.DOF[i]), t, V1[i], "Time [sec]", "Velocity")
+                self.ResExplorer.set_default_result(0)
+        self.ResExplorer.set_default_result(0)
+        self.ResExplorer.show()
+        #print "U1 = ",U1
+        #print "V1 = ",V1
+        #print result
         
     
     @pyqtSignature("")
@@ -546,7 +554,7 @@ class DynSystem:
         self.initVel=np.zeros((1,self.n_nodes))
         self.springs=np.zeros((self.n_nodes,self.n_nodes))
         self.dampers=np.zeros((self.n_nodes,self.n_nodes))
-        self.zeta=np.zeros
+        #self.zeta=np.zeros
         self.displacements=[]
         self.forces=[]
         self.DOF=[]
@@ -602,7 +610,7 @@ class DynSystem:
         #for i in range(0,sizeFcoeff[0]):
         for i in self.DOF:
             ind_i=self.DOF.index(i)
-            print "i, ind_i =",i,ind_i
+           # print "i, ind_i =",i,ind_i
             Force=0.0
             if self.forces[i]!=-1:
                 Force=self.forces[i].getValue(self.omega,t)
@@ -618,7 +626,7 @@ class DynSystem:
             counter=counter+2
             f.append(vi)
             f.append(TransformedForce[k]-2*self.zeta[k]*self.nat_freq[k]*vi-(self.nat_freq[k]**2)*xi)
-        print "f=",f
+        #print "f=",f
         return f
        
     
@@ -696,6 +704,8 @@ class DynSystem:
         self.form_KM_matrix()
         print "DOF=",self.DOF
         self.zeta=np.zeros(len(self.DOF))
+        #self.zeta[0]=0.05
+        #self.zeta[1]=0.1
         #print(self.displacements[0].getValue(15,2))
         
     def solve_for_frequency(self, freq,init_conditions,n_peaks=10.0,npoints_peak=500.0,resolution=0.1,start_time=0.0):
@@ -720,7 +730,31 @@ class DynSystem:
             num_points=npoints_peak*n_peaks
         t=np.linspace(start_time,stop_time,num_points)
         result=odeint(self.mode_decomp_solver,init_conditions,t).T
-        return t,result
+        #
+        #
+        #
+            #Solve the ODE and transforms back to U,V
+        U=[result[i*2] for i in range(0,len(self.DOF))]
+        V=[result[i*2+1] for i in range(0,len(self.DOF))]
+        U1=np.dot(self.Transf_matrix,U)
+        V1=np.dot(self.Transf_matrix,V)
+#        for i in range(0,len(self.DOF)):
+#            U=[]
+#            for j in range(0,len(t)):
+#                
+#        U=matrix([[result[i]]])
+#                self.ResExplorer.add_result("Displacement - node #"+str(self.syst.DOF[i]), frequency, response[i*2], "Frequency [Hz]", "Displacement")
+#                self.ResExplorer.add_result("Velocity - node # "+str(self.syst.DOF[i]), frequency, response[i*2+1], "Frequency [Hz]", "Velocity")
+#    wsol=odeint(ode_equations,init_cond,t).transpose()
+#    eta1=wsol[0];eta2=wsol[2];u1,u2,v1,v2=[],[],[],[]
+#    etadot1=wsol[1];etadot2=wsol[3]
+#    for i in range(0,len(eta1)):
+#        U=v_ort*matrix([[eta1[i]],[eta2[i]]])
+#        V=v_ort*matrix([[etadot1[i]],[etadot2[i]]])
+#        u1.append(U[0,0]);u2.append(U[1,0])
+#        v1.append(V[0,0]);v2.append(V[1,0])
+#    return array(u1),array(u2),array(v1),array(v2)
+        return t,result,U1,V1
     
     
     def frequency_sweep(self,start_freq,end_freq,freq_step,progressbar,NpeaksSS=2.0,n_peaks=10.0,npoints_peak=500.0,resolution=0.1,seek_steady_state=0):
